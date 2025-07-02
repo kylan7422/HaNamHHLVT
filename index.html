@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Trip Input</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    label {
+      font-weight: bold;
+      font-size: xx-large;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    input,
+    button {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      margin-bottom: 20px;
+      box-sizing: border-box;
+    }
+
+    #output,
+    #confirmView {
+      white-space: pre-wrap;
+      background: var(--bg-output);
+      color: var(--text);
+      padding: 15px;
+      border: 1px solid var(--border);
+      margin-top: 30px;
+    }
+
+    .copy-btn {
+      width: 100%;
+      background: #4CAF50;
+      color: white;
+      font-size: 16px;
+      border: none;
+      padding: 12px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+
+    .copy-btn:hover {
+      background-color: #45a049;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121212;
+        --text: #ffffff;
+        --bg-output: #1e1e1e;
+        --border: #555;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+      }
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #ffffff;
+        --text: #000000;
+        --bg-output: #f9f9f9;
+        --border: #ccc;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <label id="promptLabel">Tháng:</label>
+  <input id="promptInput" type="text" autofocus />
+  <button id="nextBtn" onclick="next()">Tiếp tục</button>
+  <div id="confirmView" style="display:none;"></div>
+  <div id="output" style="display: none;"></div>
+
+  <script>
+    const state = {
+      step: 0,
+      data: {},
+      tripIndex: 0,
+      trips: [],
+    };
+
+    const steps = [
+      { key: 'thang', label: 'Tháng:' },
+      { key: 'nam', label: 'Năm:' },
+      { key: 'chuyenN', label: 'Có bao nhiêu chuyến?' },
+    ];
+
+    const tripSteps = [
+      { key: 'Ngay', label: 'Ngày (1–31):' },
+      { key: 'SoXe', label: 'Chọn xe (1: 51C 82470, 2: 51D 26262, 3: 51C 86062):' },
+      { key: 'NoiDen', label: '1: Ngô Thị Kim Tân,\n 2: Pet co\n 3: Hưng Thịnh,\nNơi đến (1–3) hoặc gõ trực tiếp:' },
+      { key: 'Tien', label: 'Nhập tiền (vd: 2000000):' }
+    ];
+
+    const NoiDenOption = {
+      1: 'Ngô Thị Kim Tân',
+      2: 'Pet co',
+      3: 'Hưng Thịnh'
+    };
+
+    const SoXeOption = { 1: '51C 82470', 2: '51D 26262', 3: '51C 86062' };
+
+    const promptLabel = document.getElementById("promptLabel");
+    const promptInput = document.getElementById("promptInput");
+    const nextBtn = document.getElementById("nextBtn");
+    const outputBox = document.getElementById("output");
+    const confirmView = document.getElementById("confirmView");
+
+    promptInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        next();
+      }
+    });
+
+    function next() {
+      const val = promptInput.value.trim();
+      // if (val === "") return;
+
+      if (state.step < steps.length) {
+        const current = steps[state.step];
+        state.data[current.key] = val;
+        state.step++;
+        if (state.step < steps.length) {
+          showPrompt(steps[state.step]);
+        } else {
+          state.tripStep = 0;
+          state.tripIndex = 0;
+          state.trips = [];
+          showTripPrompt();
+        }
+      } else {
+        const trip = state.trips[state.tripIndex] || {};
+        const tripStep = tripSteps[state.tripStep];
+
+        if (tripStep.key === 'NoiDen') {
+          trip.NoiDen = /^[1-4]$/.test(val) ? NoiDenOption[parseInt(val)] : val;
+        } else {
+          trip[tripStep.key] = val;
+        }
+
+        state.trips[state.tripIndex] = trip;
+        state.tripStep++;
+
+        if (state.tripStep < tripSteps.length) {
+          showTripPrompt();
+        } else {
+          state.tripIndex++;
+          if (state.tripIndex < parseInt(state.data.chuyenN)) {
+            state.tripStep = 0;
+            showTripPrompt();
+          } else {
+            showConfirmView();
+          }
+        }
+      }
+
+      promptInput.value = "";
+    }
+
+    function showPrompt(step) {
+      promptLabel.innerText = step.label;
+      promptInput.focus();
+    }
+
+    function showTripPrompt() {
+      const step = tripSteps[state.tripStep];
+      promptLabel.innerText = `Chuyến ${state.tripIndex + 1} - ${step.label}`;
+      promptInput.focus();
+    }
+
+    function showConfirmView() {
+      promptInput.style.display = "none";
+      promptLabel.style.display = "none";
+      nextBtn.style.display = "none";
+      confirmView.style.display = "block";
+
+      let text = `Tháng: ${state.data.thang}\nNăm: ${state.data.nam}\nSố chuyến: ${state.data.chuyenN}\n\n`;
+      state.trips.forEach((trip, i) => {
+        text += `📍 Chuyến ${i + 1}:\n  - Ngày: ${trip.Ngay}\n  - Số xe: ${SoXeOption[parseInt(trip.SoXe)]}\n  - Nơi đến: ${trip.NoiDen}\n   - Tiền: ${trip.Tien}\n\n`;
+      });
+
+      confirmView.innerText = text;
+
+      const btn = document.createElement("button");
+      btn.innerText = "Xác nhận và tạo lệnh";
+      btn.onclick = showOutput;
+      confirmView.appendChild(btn);
+
+      btn.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          showOutput();
+        }
+      });
+    }
+
+    function showOutput() {
+      confirmView.style.display = "none";
+      outputBox.style.display = "block";
+
+      let text = `conda activate hhlvt && cd ~/Documents/ExcelGeneratorHHLVT/HaNam && echo -e \"${state.data.thang}\\n${state.data.nam}\\n${state.data.chuyenN}`;
+      state.trips.forEach((trip) => {
+        text += `\\n${trip.Ngay}`;
+        text += `\\n${trip.SoXe}`;
+        text += `\\n${trip.NoiDen}`;
+        text += `\\n${trip.Tien}`;
+      });
+      text += `\" | python main.py`;
+      outputBox.innerText = text;
+
+      const copyBtn = document.createElement("button");
+      copyBtn.innerText = "Sao chép lệnh";
+      copyBtn.className = "copy-btn";
+      copyBtn.onclick = () => {
+        navigator.clipboard.writeText(text).then(() => {
+          copyBtn.innerText = "Đã sao chép!";
+          setTimeout(() => copyBtn.innerText = "Sao chép lệnh", 2000);
+        });
+      };
+      outputBox.appendChild(copyBtn);
+    }
+
+    showPrompt(steps[0]);
+  </script>
+</body>
+
+</html>
